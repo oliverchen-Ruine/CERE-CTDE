@@ -1,0 +1,106 @@
+from datetime import datetime
+
+import numpy as np
+import os
+import collections
+from os.path import dirname, abspath
+from copy import deepcopy
+from sacred import Experiment, SETTINGS
+from sacred.observers import FileStorageObserver
+from sacred.utils import apply_backspaces_and_linefeeds
+
+import sys
+import torch as th
+from utils.logging import get_logger
+import yaml
+
+from run import run
+
+SETTINGS['CAPTURE_MODE'] = "fd" # set to "no" if you want to see stdout/stderr in console
+logger = get_logger()
+SETTINGS.CONFIG.READ_ONLY_CONFIG = False
+ex = Experiment("pymarl")
+ex.logger = logger
+ex.captured_out_filter = apply_backspaces_and_linefeeds
+
+results_path = os.path.join(dirname(dirname(abspath(__file__))), "results")
+
+
+@ex.main
+def my_main(_run, _config, _log, env_args):
+    # Setting the random seed throughout the modules
+    np.random.seed(_config["seed"])
+    th.manual_seed(_config["seed"])
+    env_args['seed'] = _config["seed"]
+
+    # run the framework
+    run(_run, _config, _log)
+
+
+def _get_config(params, arg_name, subfolder):
+    config_name = None
+    for _i, _v in enumerate(params):
+        if _v.split("=")[0] == arg_name:
+            config_name = _v.split("=")[1]
+            del params[_i]
+            break
+
+    if config_name is not None:
+        with open(os.path.join(os.path.dirname(__file__), "config", subfolder, "{}.yaml".format(config_name)), "r") as f:
+            try:
+                config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+            except yaml.YAMLError as exc:
+                assert False, "{}.yaml error: {}".format(config_name, exc)
+        return config_dict
+
+
+def recursive_dict_update(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = recursive_dict_update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
+
+if __name__ == '__main__':
+    # env = ['so_many_baneling', '2s3z', '8m', 'MMM', '10m_vs_11m', '3s5z']
+
+    # envs = ['6h_vs_8z', 'MMM2', '3s5z_vs_3s6z', '27m_vs_30m', 'corridor']
+
+    params = deepcopy(sys.argv)
+
+    # Get the defaults from default.yaml
+    with open(os.path.join(os.path.dirname(__file__), "config", "default.yaml"), "r") as f:
+        try:
+            config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+        except yaml.YAMLError as exc:
+            assert False, "default.yaml error: {}".format(exc)
+
+    # Load algorithm and env base configs
+    env_config = _get_config(params, "--env-config", "envs")
+    alg_config = _get_config(params, "--config", "algs")
+    config_dict = recursive_dict_update(config_dict, env_config)
+    config_dict = recursive_dict_update(config_dict, alg_config)
+
+    current_date = datetime.now()
+    year = current_date.year
+    month = current_date.month
+    day = current_date.day
+    hour = current_date.hour
+    minute = current_date.minute
+    seed_value = int(f"{month:02d}{day:02d}{hour:02d}{minute:02d}")
+    config_dict['env_args']['seed'] = seed_value
+    config_dict['env_args']['random_position'] = True
+    config_dict['seed'] = seed_value
+
+    # now add all the config to sacred
+    ex.add_config(config_dict)
+
+    # Save to disk by default for sacred
+    logger.info("Saving to FileStorageObserver in results/sacred.")
+    file_obs_path = os.path.join(results_path, "sacred")
+    ex.observers.append(FileStorageObserver.create(file_obs_path))
+
+    ex.run_commandline(params)
+

@@ -1,0 +1,77 @@
+import numpy as np
+import gym
+import pressureplate
+
+
+class PressurePlateWrapper:
+    def __init__(self, map_name, episode_limit=400):
+        self.map_name = map_name
+        self.episode_limit = episode_limit
+        if map_name == 'linear-4p':
+            self.env = gym.make('pressureplate-linear-4p-v0')
+        elif map_name == 'linear-5p':
+            self.env = gym.make('pressureplate-linear-5p-v0')
+        elif map_name == 'linear-6p':
+            self.env = gym.make('pressureplate-linear-6p-v0')
+        else:
+            raise NotImplementedError
+        (all_obs, info) = self.env.reset()
+        self.env.close()
+        self.n_agents = len(all_obs)
+        self.observation_space = all_obs[0].shape[0]
+        self.state_space = self.observation_space * self.n_agents
+        self.action_space = 5
+        self.steps = 0
+        self.options = {"random_position": False}
+
+    def step(self, actions):
+        (all_obs, rewards, goal_achieved, _, info) = self.env.step(actions)
+        info['rewards'] = rewards
+        reward = np.sum(rewards) / self.n_agents
+        self.steps += 1
+        done = False
+        if goal_achieved:
+            reward += 20.
+            info["battle_won"] = True
+            done = True
+        elif self.episode_limit - 1 < self.steps:
+            done = True
+            info["battle_won"] = False
+
+        return all_obs, reward, done, info
+
+    def get_obs_size(self):
+        return self.observation_space
+
+    def get_state_size(self):
+        return self.state_space
+
+    def get_total_actions(self):
+        return self.action_space
+
+    def reset(self):
+        self.render()
+        (all_obs, info) = self.env.reset(options=self.options)
+        state = np.concatenate(all_obs, 0)
+        self.steps = 0
+        return all_obs, state, info
+
+    def render(self):
+        self.env.render()
+
+    def close(self):
+        self.env.close()
+
+    def seed(self):
+        pass
+
+    def get_env_info(self):
+        env_info = {"state_shape": self.get_state_size(),
+                    "obs_shape": self.get_obs_size(),
+                    "n_actions": self.get_total_actions(),
+                    "n_agents": self.n_agents,
+                    "episode_limit": self.episode_limit}
+        return env_info
+
+    def set_random_position(self):
+        self.options['random_position'] = True

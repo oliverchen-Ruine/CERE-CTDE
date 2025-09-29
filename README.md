@@ -20,14 +20,16 @@
 ## Citation
 When using this repository, please cite:
 ```bibtex
-@ARTICLE{CHEN2025108083,
-  title={Dual-Driven Optimization of Collaborative Multi-Agent via Case Learning and Curiosity},
-  author={Ruizhu, Chen and Rong, Fei and Junhuai, Li and Aimin, Li and Yalin, Miao and Lili, Wu and Zhiming, Chen},
-  journal = {Neural Networks},
-  year={2025},
-  issn = {0893-6080},
-  doi = {https://doi.org/10.1016/j.neunet.2025.108083},
-  url = {https://www.sciencedirect.com/science/article/pii/S0893608025009633}
+@ARTICLE{CHEN2026108083,
+    title = {Dual-driven optimization of collaborative multi-agent via case learning and curiosity},
+    journal = {Neural Networks},
+    volume = {194},
+    pages = {108083},
+    year = {2026},
+    issn = {0893-6080},
+    doi = {https://doi.org/10.1016/j.neunet.2025.108083},
+    url = {https://www.sciencedirect.com/science/article/pii/S0893608025009633},
+    author = {Ruizhu Chen and Rong Fei and Junhuai Li and Aimin Li and Yalin Miao and Lili Wu and Zhiming Chen}
 }
 ```
 ## Reference
